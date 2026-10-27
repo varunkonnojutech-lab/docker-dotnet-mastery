@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+# ─── The naive Dockerfile: what most first attempts look like. ───
+#
+# Everything in one stage, on the SDK image, running as root, with no
+# layer-caching strategy. It works — and that is the trap. Compare it
+# with ./Dockerfile: same app, very different image.
+#
+# Problems, in the order you will feel them:
+#   1. Size: the SDK image (compiler, NuGet tooling, reference packs)
+#      ships to production for no reason — roughly 5x the runtime image.
+#   2. Every build redoes restore: COPY . . comes before any restore,
+#      so ANY file change invalidates the cache and restore runs again.
+#   3. Attack surface: compilers and shells in a production image, and
+#      the process runs as root inside the container.
+#   4. Secrets risk: COPY . . can sweep .env files, keys, and the .git
+#      directory into the image unless .dockerignore stops it.
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+WORKDIR /app
+COPY . .
+RUN dotnet publish src/DockerDemo.Api/DockerDemo.Api.csproj -c Release -o /app/publish
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENTRYPOINT ["dotnet", "/app/publish/DockerDemo.Api.dll"]

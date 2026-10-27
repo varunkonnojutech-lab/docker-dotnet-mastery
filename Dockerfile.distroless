@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1
+# ─── The distroless Dockerfile: smallest image, no shell, no package manager. ───
+#
+# "Distroless" here means Microsoft's chiseled images: only the .NET runtime
+# and its dependencies, built from Ubuntu packages with everything else
+# carved away. There is no shell to break into and no package manager to
+# install tools with — which is the security point, and the debugging
+# tradeoff (see README).
+#
+# The build stage is identical to ./Dockerfile: only the final stage changes.
+# NOTE the tag spelling: it is `noble-chiseled` (past tense). `noble-chisel`
+# does not exist and the build fails at the pull step — an easy typo to make.
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY src/DockerDemo.Api/DockerDemo.Api.csproj src/DockerDemo.Api/
+RUN dotnet restore src/DockerDemo.Api/DockerDemo.Api.csproj
+COPY . .
+RUN dotnet publish src/DockerDemo.Api/DockerDemo.Api.csproj \
+    -c Release -o /app/publish --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-noble-chiseled AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+USER app
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENTRYPOINT ["dotnet", "DockerDemo.Api.dll"]

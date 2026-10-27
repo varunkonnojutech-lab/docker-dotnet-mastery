@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the production image
+        run: docker build -t docker-demo:prod -f Dockerfile .
+
+      - name: Build the naive image
+        run: docker build -t docker-demo:naive -f Dockerfile.naive .
+
+      - name: Build the distroless image
+        run: docker build -t docker-demo:distroless -f Dockerfile.distroless .
+
+      - name: Smoke-test the production image
+        run: |
+          docker run -d --name demo-prod -p 8080:8080 docker-demo:prod
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8080/health
+          curl -fsS http://localhost:8080/products | grep -q "Mechanical Keyboard"
+          docker stop demo-prod
+
+      - name: Smoke-test the distroless image
+        run: |
+          docker run -d --name demo-distroless -p 8081:8080 docker-demo:distroless
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8081/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8081/health
+          docker stop demo-distroless

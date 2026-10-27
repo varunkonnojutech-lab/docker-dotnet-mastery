@@ -1,0 +1,18 @@
+# Build outputs — never send these into a Docker build context.
+[Bb]in/
+[Oo]bj/
+publish/
+
+# Version control and editor state.
+.git/
+.vs/
+.vscode/
+.idea/
+
+# Local environment files — the classic accidental secret leak.
+.env
+*.env.local
+
+# OS noise.
+.DS_Store
+Thumbs.db

@@ -1,0 +1,12 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    # No `healthcheck` here on purpose: the slim runtime image ships no
+    # curl or wget, so an in-container healthcheck has nothing to run.
+    # Check health from the host instead: curl localhost:8080/health
+    # (see README). If you need in-container checks, add a tiny static
+    # healthcheck binary or a curl-equipped base image — deliberately.
